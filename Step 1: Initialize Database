@@ -1,0 +1,44 @@
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+import requests
+from datetime import datetime
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///products.db'  # Use SQLite for simplicity
+db = SQLAlchemy(app)
+
+# Define models
+class ProductTransaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(120))
+    description = db.Column(db.Text)
+    price = db.Column(db.Float)
+    date_of_sale = db.Column(db.Date)
+    category = db.Column(db.String(120))
+    sold = db.Column(db.Boolean)
+
+# API to fetch JSON data and initialize the database
+@app.route('/initialize-db', methods=['POST'])
+def initialize_db():
+    url = "https://s3.amazonaws.com/roxiler.com/product_transaction.json"
+    response = requests.get(url)
+    if response.status_code == 200:
+        transactions = response.json()
+        for transaction in transactions:
+            new_transaction = ProductTransaction(
+                title=transaction['title'],
+                description=transaction['description'],
+                price=transaction['price'],
+                date_of_sale=datetime.strptime(transaction['dateOfSale'], '%Y-%m-%d'),
+                category=transaction['category'],
+                sold=transaction['sold']
+            )
+            db.session.add(new_transaction)
+        db.session.commit()
+        return {"message": "Database initialized successfully"}, 201
+    return {"error": "Failed to fetch data"}, 500
+
+# Run to create the database and tables
+if __name__ == '__main__':
+    db.create_all()
+    app.run(debug=True)
