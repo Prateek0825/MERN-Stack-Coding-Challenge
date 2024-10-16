@@ -1,0 +1,21 @@
+@app.route('/bar-chart', methods=['GET'])
+def get_bar_chart_data():
+    month = request.args.get('month', 'March')
+    month_number = datetime.strptime(month, '%B').month
+
+    price_ranges = [
+        (0, 100), (101, 200), (201, 300), (301, 400),
+        (401, 500), (501, 600), (601, 700), (701, 800),
+        (801, 900), (901, float('inf'))
+    ]
+
+    chart_data = []
+
+    for min_price, max_price in price_ranges:
+        count = db.session.query(ProductTransaction).filter(
+            db.extract('month', ProductTransaction.date_of_sale) == month_number,
+            ProductTransaction.price.between(min_price, max_price)
+        ).count()
+        chart_data.append({"price_range": f"{min_price}-{max_price}", "item_count": count})
+
+    return jsonify(chart_data)
