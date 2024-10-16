@@ -1,0 +1,33 @@
+@app.route('/transactions', methods=['GET'])
+def get_transactions():
+    month = request.args.get('month', 'March')  # Default to March
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 10))
+    search = request.args.get('search', '')
+
+    # Convert month to number
+    month_number = datetime.strptime(month, '%B').month
+
+    query = ProductTransaction.query.filter(db.extract('month', ProductTransaction.date_of_sale) == month_number)
+
+    if search:
+        query = query.filter(
+            (ProductTransaction.title.ilike(f'%{search}%')) |
+            (ProductTransaction.description.ilike(f'%{search}%')) |
+            (ProductTransaction.price.ilike(f'%{search}%'))
+        )
+
+    paginated_result = query.paginate(page, per_page, error_out=False)
+    
+    # Serialize data
+    result = [{
+        'id': trans.id,
+        'title': trans.title,
+        'description': trans.description,
+        'price': trans.price,
+        'dateOfSale': trans.date_of_sale,
+        'category': trans.category,
+        'sold': trans.sold
+    } for trans in paginated_result.items]
+
+    return jsonify(result), 200
