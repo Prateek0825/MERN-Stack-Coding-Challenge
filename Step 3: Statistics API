@@ -1,0 +1,28 @@
+@app.route('/statistics', methods=['GET'])
+def get_statistics():
+    month = request.args.get('month', 'March')
+    month_number = datetime.strptime(month, '%B').month
+
+    # Total sales amount
+    total_sales = db.session.query(db.func.sum(ProductTransaction.price)).filter(
+        db.extract('month', ProductTransaction.date_of_sale) == month_number,
+        ProductTransaction.sold.is_(True)
+    ).scalar()
+
+    # Total sold items
+    total_sold_items = db.session.query(ProductTransaction).filter(
+        db.extract('month', ProductTransaction.date_of_sale) == month_number,
+        ProductTransaction.sold.is_(True)
+    ).count()
+
+    # Total unsold items
+    total_unsold_items = db.session.query(ProductTransaction).filter(
+        db.extract('month', ProductTransaction.date_of_sale) == month_number,
+        ProductTransaction.sold.is_(False)
+    ).count()
+
+    return jsonify({
+        'total_sales': total_sales,
+        'total_sold_items': total_sold_items,
+        'total_unsold_items': total_unsold_items
+    })
